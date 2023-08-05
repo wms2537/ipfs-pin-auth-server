@@ -1,0 +1,23 @@
+services:
+  api:
+    hostname: ipfs-pin-auth-server
+    depends_on:
+      - mongo
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./server
+    volumes:
+      - ./server:/app
+    ports:
+      - '8000:80'
+  mongo:
+    hostname: mongo
+    image: mongo
+    ports:
+      - '27017:27017'
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: jC8oWFFe2y7TNrVh
+    volumes:
+      - ./mongo/data:/data/db
