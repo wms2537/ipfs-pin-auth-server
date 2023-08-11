@@ -1,8 +1,6 @@
 services:
   api:
     hostname: ipfs-pin-auth-server
-    depends_on:
-      - mongo
     build:
       dockerfile: Dockerfile.dev
       context: ./server
