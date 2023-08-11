@@ -93,7 +93,7 @@ func main() {
 	})
 
 	rInternal := gin.New()
-	rInternal.Use(IsAuth(db))
+	// rInternal.Use(IsAuth(db))
 
 	rInternal.POST("/key", func(c *gin.Context) {
 		key, err := GenerateRandomStringURLSafe(32)
