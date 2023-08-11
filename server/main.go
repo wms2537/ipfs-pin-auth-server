@@ -2,17 +2,16 @@ package main
 
 import (
 	"fmt"
-	"ipfs-pin-auth-server/models"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
-func IsAuth() gin.HandlerFunc {
+func IsAuth(db *leveldb.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.Request.Header.Get("Authorization")
 		if auth == "" {
@@ -27,13 +26,12 @@ func IsAuth() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		var mytoken models.Token
-		if err := models.TokensCollection.FindOne(c, bson.M{"secret": token}).Decode(&mytoken); err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		_, err := db.Get([]byte(token), nil)
+		if err != nil {
+			c.JSON(http.StatusForbidden, gin.H{"error": "invalid token"})
 			c.Abort()
 			return
 		}
-
 		c.Next()
 	}
 }
@@ -54,8 +52,13 @@ func IPFSPin(cid string) error {
 }
 
 func main() {
+	db, err := leveldb.OpenFile("./data/data.db", nil)
+	if err != nil {
+		log.Fatal("Unable to open db file!")
+	}
+	defer db.Close()
 	r := gin.New()
-	r.Use(IsAuth())
+	r.Use(IsAuth(db))
 
 	r.GET("/pin/:cid", func(c *gin.Context) {
 		example := c.MustGet("example").(string)
