@@ -8,5 +8,5 @@ services:
       - ./server:/app
       - ./data:/data
     ports:
-      - '8000:80'
+      - '8080:80'
       - '127.0.0.1:8088:8088'
