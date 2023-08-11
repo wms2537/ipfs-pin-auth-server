@@ -124,6 +124,7 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+	go rInternal.Run(":8088")
 	r.Run(":" + port)
-	rInternal.Run(":8088")
+
 }
