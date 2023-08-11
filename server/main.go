@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -51,8 +53,28 @@ func IPFSPin(cid string) error {
 	return nil
 }
 
+// GenerateRandomBytes returns securely generated random bytes.
+// It will return an error if the system's secure random
+// number generator fails to function correctly, in which
+// case the caller should not continue.
+func GenerateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	// Note that err == nil only if we read len(b) bytes.
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func GenerateRandomStringURLSafe(n int) (string, error) {
+	b, err := GenerateRandomBytes(n)
+	return base64.URLEncoding.EncodeToString(b), err
+}
+
 func main() {
-	db, err := leveldb.OpenFile("./data/data.db", nil)
+	db, err := leveldb.OpenFile("/data/data.db", nil)
 	if err != nil {
 		log.Fatal("Unable to open db file!")
 	}
@@ -61,7 +83,6 @@ func main() {
 	r.Use(IsAuth(db))
 
 	r.GET("/pin/:cid", func(c *gin.Context) {
-		example := c.MustGet("example").(string)
 
 		// it would print: "12345"
 		cid := c.Param("cid")
@@ -69,7 +90,33 @@ func main() {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			c.Abort()
 		}
-		log.Println(example)
+	})
+
+	rInternal := gin.New()
+	rInternal.Use(IsAuth(db))
+
+	rInternal.POST("/key", func(c *gin.Context) {
+		key, err := GenerateRandomStringURLSafe(32)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.Abort()
+		}
+		err = db.Put([]byte(key), []byte("value"), nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.Abort()
+		}
+		c.JSON(http.StatusOK, gin.H{"key": key})
+	})
+
+	rInternal.DELETE("/key/:key", func(c *gin.Context) {
+		key := c.Param("key")
+		err = db.Delete([]byte(key), nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.Abort()
+		}
+		c.JSON(http.StatusOK, gin.H{"key": key})
 	})
 
 	// Listen and serve on 0.0.0.0:8080
@@ -78,4 +125,5 @@ func main() {
 		port = "8080"
 	}
 	r.Run(":" + port)
+	rInternal.Run(":8088")
 }
